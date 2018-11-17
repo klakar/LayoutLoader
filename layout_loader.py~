@@ -276,7 +276,7 @@ class LayoutLoader:
 
     def run(self):
         """Run method that performs all the real work"""
-        #self.recursive_overwrite()
+        self.recursive_overwrite()
         self.popCategories()
         self.popTemplates(0)
         # show the dialog

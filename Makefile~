@@ -50,7 +50,7 @@ UI_FILES = layout_loader_dialog_base.ui
 
 EXTRAS = metadata.txt icon.png
 
-EXTRA_DIRS = templates python
+EXTRA_DIRS = templates,python
 
 COMPILED_RESOURCE_FILES = resources.py
 
