@@ -1,0 +1,39 @@
+# This file contains metadata for your plugin. Since 
+# version 2.0 of QGIS this is the proper way to supply 
+# information about a plugin. The old method of 
+# embedding metadata in __init__.py will 
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=LayoutLoader
+qgisMinimumVersion=3.0
+description=This plugin builds layouts for your map from a number of pre-designed layouts.
+version=0.1
+author=Klas Karlsson
+email=klaskarlsson@hotmail.com
+
+about=The plugin use a number of pre-designed layouts that you can select from and apply to your QGIS project. You can create your own layout templates for the plugin, and if you follow some guidelines all the plug-in settings can be applied to the templates.
+
+tracker=https://github.com/klakar/LayerLoader/issues
+repository=https://github.com/klakar/LayerLoader.git
+# End of mandatory metadata
+
+# Recommended items:
+
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=layouts, templates, standard
+
+homepage=https://github.com/klakar/LayerLoader/wiki
+category=Plugins
+icon=icon.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+

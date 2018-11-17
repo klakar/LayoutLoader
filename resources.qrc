@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/layout_loader" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
