@@ -82,10 +82,21 @@ class LayoutLoader:
     	  templates_dir = os.path.join(profile_dir,'composer_templates')
     	  templates = [f.name for f in os.scandir(templates_dir) if f.is_file() ]
     	  templates.sort()
-    	  self.dlg.txtMapTitle.setText(QFileInfo(QgsProject.instance().fileName()).baseName())
+    	  project_file_name = QFileInfo(QgsProject.instance().fileName()).baseName()
+    	  project_title = QgsProject.instance().title()
+    	  if project_title == '':
+    	  	  project_title = project_file_name
+    	  self.dlg.txtMapTitle.setText(project_title)
     	  for template in templates:
     	  	  self.dlg.listWidget.addItem(os.path.splitext(template)[0])
     	  self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
+    	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
+    	  
+    # Add templates and resources from plugin to user profile
+    def addMoreTemplates(self):
+    	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
+    	  are_you_sure += self.tr('Do you want to OVERWRITE existing files with the same filenames?')
+    	  button_pressed = QMessageBox.warning(QMessageBox(),'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
     	  
     # Use selected item from listWidget to suggest new layout name
     def suggestLayoutName(self):

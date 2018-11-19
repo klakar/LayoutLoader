@@ -90,6 +90,17 @@ class LayoutLoader:
     	  for template in templates:
     	  	  self.dlg.listWidget.addItem(os.path.splitext(template)[0])
     	  self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
+    	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
+    	  
+    # Add templates and resources from plugin to user profile
+    def addMoreTemplates(self):
+    	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
+    	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
+    	  button_pressed = QMessageBox.warning(QMessageBox(),'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
+    	  if button_pressed == QMessageBox.Yes:
+    	  	  pass
+    	  if button_pressed == QMessageBox.No:
+    	  	  pass
     	  
     # Use selected item from listWidget to suggest new layout name
     def suggestLayoutName(self):
