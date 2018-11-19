@@ -34,6 +34,7 @@ from .resources import *
 from .layout_loader_dialog import LayoutLoaderDialog
 import os.path
 from qgis.core import QgsApplication, QgsProject
+from distutils.dir_util import copy_tree
 
 
 class LayoutLoader:
@@ -78,6 +79,7 @@ class LayoutLoader:
         
     # Load print layout templates from profile template folder to listWidget in plugin dialogue
     def loadTemplates(self):
+    	  self.dlg.listWidget.clear()
     	  profile_dir = QgsApplication.qgisSettingsDirPath()
     	  templates_dir = os.path.join(profile_dir,'composer_templates')
     	  templates = [f.name for f in os.scandir(templates_dir) if f.is_file() ]
@@ -96,11 +98,19 @@ class LayoutLoader:
     def addMoreTemplates(self):
     	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
     	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
-    	  button_pressed = QMessageBox.warning(QMessageBox(),'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
+    	  dialogBox = QMessageBox()
+    	  
+    	  button_pressed = QMessageBox.warning(dialogBox,'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
+    	  
+    	  # Paths to source files and qgis profile directory
+    	  source_profile = os.path.join(self.plugin_dir, 'profile')
+    	  profile_home = QgsApplication.qgisSettingsDirPath()
     	  if button_pressed == QMessageBox.Yes:
-    	  	  pass
+    	  	  copy_tree(source_profile, profile_home)
+    	  	  self.loadTemplates()
     	  if button_pressed == QMessageBox.No:
-    	  	  pass
+    	  	  copy_tree(source_profile, profile_home, update=1)
+    	  	  self.loadTemplates()
     	  
     # Use selected item from listWidget to suggest new layout name
     def suggestLayoutName(self):
