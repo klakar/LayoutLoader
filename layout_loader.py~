@@ -95,11 +95,13 @@ class LayoutLoader:
     	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
     	  
     # Add templates and resources from plugin to user profile
+    # This is a stupid way to use QMessageBox, but it works (mostly). Suggestions on working code appreciated
     def addMoreTemplates(self):
     	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
     	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
-    	  #dialogBox = QMessageBox()
-    	  button_pressed = QMessageBox.warning(self,'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
+    	  dialogBox = QMessageBox()
+    	  
+    	  button_pressed = QMessageBox.warning(dialogBox,'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
     	  
     	  # Paths to source files and qgis profile directory
     	  source_profile = os.path.join(self.plugin_dir, 'profile')
