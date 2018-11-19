@@ -1,7 +1,7 @@
 Plugin Builder Results
 
 Your plugin LayoutLoader was created in:
-    /home/klakar/layoutloader
+    /home/klakar/plugin_dev/layoutloader
 
 Your QGIS plugin directory is located at:
     /home/klakar/.local/share/QGIS/QGIS3/profiles/default/python/plugins

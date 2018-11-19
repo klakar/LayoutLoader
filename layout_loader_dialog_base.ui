@@ -6,36 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>422</width>
-    <height>402</height>
+    <width>442</width>
+    <height>829</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Layout Loader</string>
   </property>
-  <property name="locale">
-   <locale language="English" country="Sweden"/>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="lblCategory">
-     <property name="text">
-      <string>Layout Category</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QComboBox" name="cmbCategory"/>
-   </item>
-   <item>
-    <widget class="QLabel" name="lblTemplate">
-     <property name="text">
-      <string>Layout Template</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QComboBox" name="cmbTemplate"/>
+    <widget class="QListWidget" name="listWidget"/>
    </item>
    <item>
     <widget class="Line" name="line">
@@ -45,9 +25,9 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="lblLayoutName">
+    <widget class="QLabel" name="label">
      <property name="text">
-      <string>Layout Name (unique)</string>
+      <string>Layout Name</string>
      </property>
     </widget>
    </item>
@@ -55,30 +35,24 @@
     <widget class="QLineEdit" name="txtLayoutName"/>
    </item>
    <item>
-    <widget class="QLabel" name="lblTitle">
+    <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>Map Title (if supported by layout)</string>
+      <string>Map Title (replacing {{title}} in template)</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QLineEdit" name="txtTitle"/>
+    <widget class="QLineEdit" name="txtMapTitle"/>
    </item>
    <item>
-    <spacer name="verticalSpacer">
+    <widget class="Line" name="line_2">
      <property name="orientation">
-      <enum>Qt::Vertical</enum>
+      <enum>Qt::Horizontal</enum>
      </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
+    </widget>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="btnBox">
+    <widget class="QDialogButtonBox" name="button_box">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
@@ -92,7 +66,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>btnBox</sender>
+   <sender>button_box</sender>
    <signal>accepted()</signal>
    <receiver>LayoutLoaderDialogBase</receiver>
    <slot>accept()</slot>
@@ -108,7 +82,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>btnBox</sender>
+   <sender>button_box</sender>
    <signal>rejected()</signal>
    <receiver>LayoutLoaderDialogBase</receiver>
    <slot>reject()</slot>

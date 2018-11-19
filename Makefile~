@@ -1,9 +1,9 @@
 #/***************************************************************************
 # LayoutLoader
 #
-# This plugin builds layouts for your map from a number of pre-designed layouts.
+# Load and modify layout templates
 #							 -------------------
-#		begin				: 2018-11-17
+#		begin				: 2018-11-18
 #		git sha				: $Format:%H$
 #		copyright			: (C) 2018 by Klas Karlsson
 #		email				: klaskarlsson@hotmail.com
@@ -50,7 +50,7 @@ UI_FILES = layout_loader_dialog_base.ui
 
 EXTRAS = metadata.txt icon.png
 
-EXTRA_DIRS = templates,python
+EXTRA_DIRS =
 
 COMPILED_RESOURCE_FILES = resources.py
 
@@ -67,7 +67,7 @@ PLUGIN_UPLOAD = $(c)/plugin_upload.py
 
 RESOURCE_SRC=$(shell grep '^ *<file' resources.qrc | sed 's@</file>@@g;s/.*>//g' | tr '\n' ' ')
 
-QGISDIR=.local/share/QGIS/QGIS3/profiles/default
+QGISDIR=.qgis2
 
 default: compile
 
@@ -113,7 +113,7 @@ deploy: compile doc transcompile
 	cp -vfr i18n $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)
 	cp -vfr $(HELP) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/help
 	# Copy extra directories if any
-	$(foreach EXTRA_DIR,$(EXTRA_DIRS),cp -R $(EXTRA_DIR) $(HOME)/$(QGISDIR)/python/plugins/$(PLUGINNAME)/)
+	(foreach EXTRA_DIR,(EXTRA_DIRS), cp -R (EXTRA_DIR) (HOME)/(QGISDIR)/python/plugins/(PLUGINNAME)/;)
 
 
 # The dclean target removes compiled python files from plugin directory

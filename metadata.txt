@@ -7,17 +7,17 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=LayoutLoader
+name=Layout Loader
 qgisMinimumVersion=3.0
-description=This plugin builds layouts for your map from a number of pre-designed layouts.
+description=Load and modify layout templates
 version=0.1
 author=Klas Karlsson
 email=klaskarlsson@hotmail.com
 
-about=The plugin use a number of pre-designed layouts that you can select from and apply to your QGIS project. You can create your own layout templates for the plugin, and if you follow some guidelines all the plug-in settings can be applied to the templates.
+about=Provide a brief description of the plugin and its purpose.
 
-tracker=https://github.com/klakar/LayerLoader/issues
-repository=https://github.com/klakar/LayerLoader.git
+tracker=http://bugs
+repository=http://repo
 # End of mandatory metadata
 
 # Recommended items:
@@ -26,9 +26,9 @@ repository=https://github.com/klakar/LayerLoader.git
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=layouts, templates, standard
+tags=python
 
-homepage=https://github.com/klakar/LayerLoader/wiki
+homepage=http://homepage
 category=Plugins
 icon=icon.png
 # experimental flag
