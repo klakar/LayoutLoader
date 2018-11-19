@@ -1,32 +1,24 @@
-Plugin Builder Results
+# Layout Loader QGIS Plugin
+DON'T BLAME ME IF IT BREAKS YOUR SYSTEM
 
-Your plugin LayoutLoader was created in:
-    /home/klakar/plugin_dev/layoutloader
+### Aims
+* Simple way to distribute a few nice templates for QGIS
+* Simple way to _apply_ a template to your map
+* Make simple changes to layout texts
+* A lot of advanced, but easy to use layouts for different purposes
 
-Your QGIS plugin directory is located at:
-    /home/klakar/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+### Done
+* Plugin that lists and uses all templates in default templates folder
+* Apply and zoom/pan templates to map
+* Change "title" texts in all layout labels (if template supports it)
+* Some template examples included
+* Some graphics and python functions included
+* Add plugin templates to your default QGIS profile
 
-What's Next:
+### Wish list
+* Create WidgetItems that can use picture previews of templates
+* Make tool a dockable panel
+* More templates
+* More templates
+* More templates
 
-  * Copy the entire directory containing your new plugin to the QGIS plugin
-    directory
-
-  * Compile the resources file using pyrcc5
-
-  * Run the tests (``make test``)
-
-  * Test the plugin by enabling it in the QGIS plugin manager
-
-  * Customize it by editing the implementation file: ``layout_loader.py``
-
-  * Create your own custom icon, replacing the default icon.png
-
-  * Modify your user interface by opening LayoutLoader.ui in Qt Designer
-
-  * You can use the Makefile to compile your Ui and resource files when
-    you make changes. This requires GNU make (gmake)
-
-For more information, see the PyQGIS Developer Cookbook at:
-http://www.qgis.org/pyqgis-cookbook/index.html
-
-(C) 2011-2018 GeoApt LLC - geoapt.com
