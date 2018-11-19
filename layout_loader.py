@@ -82,6 +82,10 @@ class LayoutLoader:
     	  self.dlg.listWidget.clear()
     	  profile_dir = QgsApplication.qgisSettingsDirPath()
     	  templates_dir = os.path.join(profile_dir,'composer_templates')
+    	  # Does the composer_templates folder exist?
+    	  if os.path.isdir(templates_dir) == False:
+    	      os.mkdir(templates_dir)
+
     	  templates = [f.name for f in os.scandir(templates_dir) if f.is_file() ]
     	  templates.sort()
     	  project_file_name = QFileInfo(QgsProject.instance().fileName()).baseName()
@@ -106,6 +110,7 @@ class LayoutLoader:
     	  # Paths to source files and qgis profile directory
     	  source_profile = os.path.join(self.plugin_dir, 'profile')
     	  profile_home = QgsApplication.qgisSettingsDirPath()
+
     	  if button_pressed == QMessageBox.Yes:
     	  	  copy_tree(source_profile, profile_home)
     	  	  self.loadTemplates()
