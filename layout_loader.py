@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import *
 
 # Initialize Qt resources from file resources.py
 from .resources import *
-# Import the code for the dialog
+# Import the code for the dialog and for copying the templates to local profile folder
 from .layout_loader_dialog import LayoutLoaderDialog
 import os.path
 from qgis.core import QgsApplication, QgsProject
@@ -68,6 +68,7 @@ class LayoutLoader:
 
         # Create the dialog (after translation) and keep reference
         self.dlg = LayoutLoaderDialog()
+        # Run the function to load templates into the dialog listWidget (probably not needed, it's called later)
         self.loadTemplates()
 
         # Declare instance attributes
@@ -82,24 +83,32 @@ class LayoutLoader:
     	  self.dlg.listWidget.clear()
     	  profile_dir = QgsApplication.qgisSettingsDirPath()
     	  templates_dir = os.path.join(profile_dir,'composer_templates')
-    	  # Does the composer_templates folder exist?
+    	  
+    	  # Does the composer_templates folder exist? Otherwise create it.
     	  if os.path.isdir(templates_dir) == False:
     	      os.mkdir(templates_dir)
-
+    	  
+    	  # Search the templates folder and add files to templates list and sort it
     	  templates = [f.name for f in os.scandir(templates_dir) if f.is_file() ]
     	  templates.sort()
+    	  
+    	  # Get the project file name and if it exist the project title. Use for Title suggestion
     	  project_file_name = QFileInfo(QgsProject.instance().fileName()).baseName()
     	  project_title = QgsProject.instance().title()
     	  if project_title == '':
     	  	  project_title = project_file_name
     	  self.dlg.txtMapTitle.setText(project_title)
+    	  
+    	  # Add all the templates from the list to the listWidget
     	  for template in templates:
     	  	  self.dlg.listWidget.addItem(os.path.splitext(template)[0])
+    	  	  
+    	  # Connect signals from the dialog to functions in this file
     	  self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
     	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
     	  
-    # Add templates and resources from plugin to user profile
-    # This is a stupid way to use QMessageBox, but it works (mostly). Suggestions on working code appreciated
+    # Add templates and resources from plugin to user profile (triggers on dialog button clicked signal)
+    # This is a stupid way to use QMessageBox, but it works (mostly). TODO fix duplicate creation of the MessageBox
     def addMoreTemplates(self):
     	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
     	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
@@ -118,7 +127,7 @@ class LayoutLoader:
     	  	  copy_tree(source_profile, profile_home, update=1)
     	  	  self.loadTemplates()
     	  
-    # Use selected item from listWidget to suggest new layout name
+    # Use selected item from listWidget to suggest new layout name (triggers on listWidget itemClicked signal)
     def suggestLayoutName(self):
     	  self.dlg.txtLayoutName.setText(self.dlg.listWidget.currentItem().text())
     	     
@@ -232,6 +241,8 @@ class LayoutLoader:
         # remove the toolbar
         del self.toolbar
 
+    # Python function that do the main work of setting up the print layout
+    # The code in the function can work stand alone if you use the commented variables and edit their values
     def layoutLoader(self, template_source, layout_name, title_text):
         """ Generate the layout """
         from qgis.core import (QgsProject,
@@ -240,13 +251,16 @@ class LayoutLoader:
         from qgis.utils import iface
         from PyQt5.QtXml import QDomDocument
 
-        #template_source = '/home/klakar/Dokument/TemplateTest1.qpt'
-        #layout_name = 'NyLayout'
-        #title_text = 'Ny Titel'
-
+        #template_source = '/home/user/Document/Template.qpt'
+        #layout_name = 'NewLayout'
+        #title_text = 'New Title'
+        
+        # Create objects lm = layout manager, l = print layout
         lm = QgsProject.instance().layoutManager()
         l = QgsPrintLayout(QgsProject.instance())
         l.initializeDefaults()
+        
+        # Load template file and load it into the layout (l)
         template_file = open(template_source)
         template_content = template_file.read()
         template_file.close()
@@ -254,7 +268,12 @@ class LayoutLoader:
         document.setContent(template_content)
         context = QgsReadWriteContext()
         l.loadFromTemplate(document, context)
+        
+        # Give the layout a name (must be unique)
         l.setName(layout_name)
+        
+        # Get current canvas extent and apply that to all maps (items) in layout
+        # Replace any text "{{title}}" in any layout label with the dialog Title text
         canvas = iface.mapCanvas()
         for item in l.items():
             if item.type()==65639: # Map
@@ -265,23 +284,30 @@ class LayoutLoader:
         # Add layout to layout manager
         l.refresh()
         lm.addLayout(l)
+        
+        # Open and show the layout in designer
         iface.openLayoutDesigner(l)
 
 
     def run(self):
         """Run method that performs all the real work"""
+        # This loads the dialog with templates (again) TODO check when it's best to do this
         self.loadTemplates()
+        
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
-        # See if OK was pressed
+
+        # See if OK was pressed TODO: probably need something to happen when pressing "cancel" too.
         if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
+            # Get values from dialog list and text fields
             template_name = self.dlg.listWidget.currentItem().text()
             layout_name = self.dlg.txtLayoutName.text()
             map_title = self.dlg.txtMapTitle.text()
             profile_dir = QgsApplication.qgisSettingsDirPath()
+            # create the template item selected full path (assuming extension is lower case)
             template_source = os.path.join(profile_dir,'composer_templates',template_name + '.qpt')
+            
+            # Call main function to generate layout
             self.layoutLoader(template_source, layout_name, map_title)
