@@ -15,6 +15,30 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Map Title (replacing {{title}} in template) [optional]</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLineEdit" name="txtMapTitle"/>
+   </item>
+   <item>
+    <widget class="Line" name="line_3">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Select a Layout Template</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QListWidget" name="listWidget"/>
    </item>
    <item>
@@ -27,22 +51,12 @@
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Layout Name</string>
+      <string>Layout Name [must be unique]</string>
      </property>
     </widget>
    </item>
    <item>
     <widget class="QLineEdit" name="txtLayoutName"/>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Map Title (replacing {{title}} in template)</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLineEdit" name="txtMapTitle"/>
    </item>
    <item>
     <widget class="Line" name="line_2">

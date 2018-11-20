@@ -35,6 +35,7 @@ from .layout_loader_dialog import LayoutLoaderDialog
 import os.path
 from qgis.core import QgsApplication, QgsProject
 from distutils.dir_util import copy_tree
+from random import randrange as rand
 
 
 class LayoutLoader:
@@ -69,7 +70,7 @@ class LayoutLoader:
         # Create the dialog (after translation) and keep reference
         self.dlg = LayoutLoaderDialog()
         # Run the function to load templates into the dialog listWidget (probably not needed, it's called later)
-        self.loadTemplates()
+        # self.loadTemplates()
 
         # Declare instance attributes
         self.actions = []
@@ -108,13 +109,21 @@ class LayoutLoader:
     	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
     	  
     # Add templates and resources from plugin to user profile (triggers on dialog button clicked signal)
-    # This is a stupid way to use QMessageBox, but it works (mostly). TODO fix duplicate creation of the MessageBox
+    # Somehow a lot of QMessageBox's are generated. TODO fix duplicate creation of the MessageBox
     def addMoreTemplates(self):
     	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
     	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
     	  dialogBox = QMessageBox()
+    	  dialogBox.setWindowTitle(self.tr('Add Templates from Plugin'))
+    	  dialogBox.setText(are_you_sure)
+    	  more_information = self.tr('If you answer \'No\', no current files will be overwritten, but new files will be copied to their location.\n\n')
+    	  more_information += self.tr('If you answer \'Yes\' any current files that you have manually modified, will be overwritten with the new ones from the plugin.\n')
+    	  more_information += self.tr('This should be safe if you haven\'t modified any plugin templates and kept the original filename.\n\n')
+    	  more_information += self.tr('If you \'Cancel\' No changes to your QGIS profile are made!')
+    	  dialogBox.setDetailedText(more_information)
+    	  dialogBox.setStandardButtons(QMessageBox.Cancel|QMessageBox.No|QMessageBox.Yes)
     	  
-    	  button_pressed = QMessageBox.warning(dialogBox,'Adding More Templates',are_you_sure, QMessageBox.Cancel | QMessageBox.No | QMessageBox.Yes)
+    	  button_pressed = dialogBox.exec_()
     	  
     	  # Paths to source files and qgis profile directory
     	  source_profile = os.path.join(self.plugin_dir, 'profile')
@@ -127,9 +136,12 @@ class LayoutLoader:
     	  	  copy_tree(source_profile, profile_home, update=1)
     	  	  self.loadTemplates()
     	  
-    # Use selected item from listWidget to suggest new layout name (triggers on listWidget itemClicked signal)
+    # Use selected item from listWidget and any Map Title text to suggest new layout name (triggers on listWidget itemClicked signal)
     def suggestLayoutName(self):
-    	  self.dlg.txtLayoutName.setText(self.dlg.listWidget.currentItem().text())
+    	  layout_name_string = self.dlg.listWidget.currentItem().text()
+    	  if self.dlg.txtMapTitle != '':
+    	  	  layout_name_string += ' ' + self.dlg.txtMapTitle.text()
+    	  self.dlg.txtLayoutName.setText(layout_name_string)
     	     
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -302,12 +314,24 @@ class LayoutLoader:
         # See if OK was pressed TODO: probably need something to happen when pressing "cancel" too.
         if result:
             # Get values from dialog list and text fields
-            template_name = self.dlg.listWidget.currentItem().text()
+            try:
+               template_name = self.dlg.listWidget.currentItem().text()
+            except:
+            	template_name = ''
             layout_name = self.dlg.txtLayoutName.text()
+            # Generate random layout name for blank names
+            if layout_name == '':
+               layout_name += 'Layout ' + str(rand(1000,9999))
             map_title = self.dlg.txtMapTitle.text()
             profile_dir = QgsApplication.qgisSettingsDirPath()
             # create the template item selected full path (assuming extension is lower case)
             template_source = os.path.join(profile_dir,'composer_templates',template_name + '.qpt')
             
-            # Call main function to generate layout
-            self.layoutLoader(template_source, layout_name, map_title)
+            # Call function to generate layout
+            if os.path.exists(template_source):
+               self.layoutLoader(template_source, layout_name, map_title)
+            else:
+            	infoBox = QMessageBox()
+            	infoBox.setText(self.tr('You must select a template from the list.'))
+            	infoBox.setWindowTitle(self.tr('Layout Loader'))
+            	infoBox.exec_()
