@@ -69,6 +69,9 @@ class LayoutLoader:
 
         # Create the dialog (after translation) and keep reference
         self.dlg = LayoutLoaderDialog()
+        # Set Layer Name line edit disabled at the start
+        self.dlg.txtLayoutName.setEnabled(False)
+        
         # Run the function to load templates into the dialog listWidget (probably not needed, it's called later)
         # self.loadTemplates()
 
@@ -138,6 +141,7 @@ class LayoutLoader:
     	  
     # Use selected item from listWidget and any Map Title text to suggest new layout name (triggers on listWidget itemClicked signal)
     def suggestLayoutName(self):
+    	  self.dlg.txtLayoutName.setEnabled(True)
     	  layout_name_string = self.dlg.listWidget.currentItem().text()
     	  if self.dlg.txtMapTitle != '':
     	  	  layout_name_string += ' ' + self.dlg.txtMapTitle.text()
@@ -319,19 +323,33 @@ class LayoutLoader:
             except:
             	template_name = ''
             layout_name = self.dlg.txtLayoutName.text()
-            # Generate random layout name for blank names
+            # Generate random layout name for blank names (REDUNDANT?)
             if layout_name == '':
                layout_name += 'Layout ' + str(rand(1000,9999))
+            
+            # Add function to test the layout name so that it doesn't exist. If it does handle the exception
+            
             map_title = self.dlg.txtMapTitle.text()
             profile_dir = QgsApplication.qgisSettingsDirPath()
             # create the template item selected full path (assuming extension is lower case)
             template_source = os.path.join(profile_dir,'composer_templates',template_name + '.qpt')
             
             # Call function to generate layout
-            if os.path.exists(template_source):
-               self.layoutLoader(template_source, layout_name, map_title)
-            else:
+            try:
+               if os.path.exists(template_source):
+                  self.layoutLoader(template_source, layout_name, map_title)
+               else:
+            	   infoBox = QMessageBox()
+            	   infoBox.setText(self.tr('You must select a template from the list.'))
+            	   infoBox.setWindowTitle(self.tr('Layout Loader'))
+            	   infoBox.exec_()
+            except:
             	infoBox = QMessageBox()
-            	infoBox.setText(self.tr('You must select a template from the list.'))
+            	infoBox.setText(self.tr('Ooops. Something went wrong. Did you create a unique layout name?'))
             	infoBox.setWindowTitle(self.tr('Layout Loader'))
             	infoBox.exec_()
+            # Clean up
+            self.dlg.txtLayoutName.clear()
+            self.dlg.txtLayoutName.setEnabled(False)
+            self.dlg.txtMapTitle.clear()
+            self.dlg.txtMapTitle.setFocus()
