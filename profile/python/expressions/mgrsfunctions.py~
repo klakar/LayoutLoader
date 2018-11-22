@@ -15,7 +15,7 @@ Functions to be used with grid coordinates (mostly)
 def mgrs(easting, northing, epsg, feature, parent): 
 	"""
 	<i>Requires mgrspy from Boundless<br>
-	included in Layout Loarder plugin</i><br><br>
+	pip install mgrspy</i><br><br>
 	Find MGRS from X and Y coordinate in EPSG.<br>
 	<br>
 	<h2>Example:</h2><br>
