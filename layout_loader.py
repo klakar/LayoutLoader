@@ -346,7 +346,7 @@ class LayoutLoader:
             layout_name = self.dlg.txtLayoutName.text()
             # Generate random layout name for blank names (REDUNDANT?)
             if layout_name == '':
-               layout_name += 'Layout ' + str(rand(1000,9999))
+               layout_name = 'Layout'
             
             # Add function to test the layout name so that it doesn't exist. If it does handle the exception
             

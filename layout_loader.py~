@@ -360,7 +360,7 @@ class LayoutLoader:
             if layout_count >> 0:
                name = layout_name.split('_')
                if layout_count >> 1:
-                  layout_name = '_'.join(name[:-1]) + '_' + str(layout_count + 1)
+                  layout_name = '_'.join(name) + '_' + str(layout_count + 1)
                else:
                	layout_name += '_2'
             try:
