@@ -280,7 +280,7 @@ class LayoutLoader:
         l.initializeDefaults()
         
         # Load template file and load it into the layout (l)
-        template_file = open(template_source)
+        template_file = open(template_source, 'r+', encoding='utf-8')
         template_content = template_file.read()
         template_file.close()
         document = QDomDocument()

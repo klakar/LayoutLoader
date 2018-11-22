@@ -369,14 +369,15 @@ class LayoutLoader:
                else:
                   infoBox = QMessageBox()
                   infoBox.setIcon(QMessageBox.Information)
-                  infoBox.setText(self.tr('You must select a template from the list.'))
+                  infoBox.setText(self.tr('You must select a valid template from the list.'))
                   infoBox.setWindowTitle(self.tr('Layout Loader'))
                   infoBox.exec_()
             except:
                infoBox = QMessageBox()
                infoBox.setIcon(QMessageBox.Warning)
-               infoBox.setText(self.tr('Ooops. Something went wrong opening ({}). But I don\'t know what?'.format(layout_count)))
+               infoBox.setText(self.tr('Ooops. Something went wrong opening ({}). But I don\'t know what?'.format(layout_name)))
                infoBox.setWindowTitle(self.tr('Layout Loader'))
+               infoBox.setDetailedText('Map Title: {}\nTemplate Name: {}\nLayout Name: {}\nProfile Directory: {}\nTemplate Source: {}\nLayout Count: {}' % (map_title, template_name, layout_name, profile_dir, template_source, layout_count))
                infoBox.exec_()
                
             # Clean up
