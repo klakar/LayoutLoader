@@ -21,7 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QFileInfo
+from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QFileInfo, Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QAction
 # The following two imports are probably a bit overkill...
@@ -85,7 +85,11 @@ class LayoutLoader:
         # Connect signals from the dialog to functions in this file
         self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
         self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
-
+        
+        # Testing context menu
+        self.dlg.listWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.dlg.listWidget.customContextMenuRequested.connect(self.listMenu)
+        
         
     # Load print layout templates from profile template folder to listWidget in plugin dialogue
     def loadTemplates(self):
@@ -114,9 +118,35 @@ class LayoutLoader:
     	  	  if extension == '.qpt':
     	  	  	  self.dlg.listWidget.addItem(filename)
     	  	  
+    # List of templates context menu. This is how templates can be deleted
+    def listMenu(self, position):
+    	  self.dlg.txtLayoutName.setEnabled(False)
+    	  indexes = self.dlg.listWidget.selectedIndexes()
+    	  if indexes:
+    	     menu = QMenu()
+    	     menu.addAction(self.tr('Delete Template File'))
+    	     # menu.addAction(self.tr('Future context menu option'))
+         
+    	     menu_choice = menu.exec_(self.dlg.listWidget.viewport().mapToGlobal(position))
+    	  
+    	     try:
+    	     	  if menu_choice.text() == 'Delete Template File':
+    	  	       template_name = self.dlg.listWidget.selectedItems()[0].text()
+    	  	       template_path = os.path.join(QgsApplication.qgisSettingsDirPath(),'composer_templates',template_name + '.qpt')
+    	  	       if os.path.exists(template_path):
+    	  	  	       os.remove(template_path)
+    	  	  	       self.loadTemplates()
+    	  	  	       self.dlg.txtLayoutName.setText('{} - Deleted'.format(template_name))
+    	  	  	  
+    	  	  	  # if menu_choice.text() == 'Future context menu option':
+    	  	  	  	  # do something
+    	  	  	  	  
+    	     except:
+    	     	  pass
+    	  
   	  
     # Add templates and resources from plugin to user profile (triggers on dialog button clicked signal)
-    # Somehow a lot of QMessageBox's are generated. TODO fix duplicate creation of the MessageBox
+    # Somehow a lot of QMessageBox's are generated.
     def addMoreTemplates(self):
     	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
     	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
