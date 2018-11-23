@@ -1,5 +1,6 @@
 # Layout Loader QGIS Plugin
 DON'T BLAME ME IF IT BREAKS YOUR SYSTEM
+
 _(But it really shouldn't)_
 
 ### Aims
@@ -24,4 +25,4 @@ _(But it really shouldn't)_
 * More templates
 
 ### Known issues
-Templates work poorly on some MacOS installations... (help wanted)
+No currently issues known.
