@@ -82,6 +82,11 @@ class LayoutLoader:
         self.toolbar = self.iface.addToolBar(u'LayoutLoader')
         self.toolbar.setObjectName(u'LayoutLoader')
         
+        # Connect signals from the dialog to functions in this file
+    	  self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
+    	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
+
+        
     # Load print layout templates from profile template folder to listWidget in plugin dialogue
     def loadTemplates(self):
     	  self.dlg.listWidget.clear()
@@ -109,38 +114,37 @@ class LayoutLoader:
     	  	  if extension == '.qpt':
     	  	  	  self.dlg.listWidget.addItem(filename)
     	  	  
-    	  # Connect signals from the dialog to functions in this file
-    	  self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
-    	  self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
-    	  
+  	  
     # Add templates and resources from plugin to user profile (triggers on dialog button clicked signal)
     # Somehow a lot of QMessageBox's are generated. TODO fix duplicate creation of the MessageBox
     def addMoreTemplates(self):
     	  are_you_sure = self.tr('This will add Templates and resources like SVG files and script functions to your QGIS profile.\n\n')
     	  are_you_sure += self.tr('Do you want to OVERWRITE any existing files with the same filenames?')
-    	  dialogBox = QMessageBox()
-    	  dialogBox.setIcon(QMessageBox.Question)
-    	  dialogBox.setWindowTitle(self.tr('Add Templates from Plugin'))
-    	  dialogBox.setText(are_you_sure)
+    	  addMoreBox = QMessageBox()
+    	  addMoreBox.setIcon(QMessageBox.Question)
+    	  addMoreBox.setWindowTitle(self.tr('Add Templates from Plugin'))
+    	  addMoreBox.setText(are_you_sure)
     	  more_information = self.tr('If you answer \'No\', no current files will be overwritten, but new files will be copied to their location.\n\n')
     	  more_information += self.tr('If you answer \'Yes\' any current files that you have manually modified, will be overwritten with the new ones from the plugin.\n')
     	  more_information += self.tr('This should be safe if you haven\'t modified any plugin templates and kept the original filename.\n\n')
     	  more_information += self.tr('If you \'Cancel\' No changes to your QGIS profile are made!')
-    	  dialogBox.setDetailedText(more_information)
-    	  dialogBox.setStandardButtons(QMessageBox.Cancel|QMessageBox.No|QMessageBox.Yes)
+    	  addMoreBox.setDetailedText(more_information)
+    	  addMoreBox.setStandardButtons(QMessageBox.Cancel|QMessageBox.No|QMessageBox.Yes)
     	  
-    	  button_pressed = dialogBox.exec_()
+    	  button_pressed = addMoreBox.exec_()
     	  
     	  # Paths to source files and qgis profile directory
     	  source_profile = os.path.join(self.plugin_dir, 'profile')
     	  profile_home = QgsApplication.qgisSettingsDirPath()
 
+    	  # The acutal "copy" with or without overwrite (update)
     	  if button_pressed == QMessageBox.Yes:
     	  	  copy_tree(source_profile, profile_home)
     	  	  self.loadTemplates()
-    	  if button_pressed == QMessageBox.No:
+    	  elif button_pressed == QMessageBox.No:
     	  	  copy_tree(source_profile, profile_home, update=1)
     	  	  self.loadTemplates()
+    	  
     	  
     # Use selected item from listWidget and any Map Title text to suggest new layout name (triggers on listWidget itemClicked signal)
     def suggestLayoutName(self):
@@ -308,11 +312,11 @@ class LayoutLoader:
         try:
            iface.openLayoutDesigner(l)
         except:
-           infoBox = QMessageBox()
-           infoBox.setIcon(QMessageBox.Warning)
-           infoBox.setText(self.tr('Ooops. Something went wrong. Trying to open the generated layout ({}) returned errors.'.format(l.name())))
-           infoBox.setWindowTitle(self.tr('Layout Loader'))
-           infoBox.exec_()
+           oopsBox = QMessageBox()
+           oopsBox.setIcon(QMessageBox.Warning)
+           oopsBox.setText(self.tr('Ooops. Something went wrong. Trying to open the generated layout ({}) returned errors.'.format(l.name())))
+           oopsBox.setWindowTitle(self.tr('Layout Loader'))
+           oopsBox.exec_()
            
     # Does a layout already exist
     def layout_exists(self, layout_name):
@@ -369,15 +373,16 @@ class LayoutLoader:
                else:
                   infoBox = QMessageBox()
                   infoBox.setIcon(QMessageBox.Information)
-                  infoBox.setText(self.tr('You must select a template from the list.'))
+                  infoBox.setText(self.tr('You must select a valid template from the list.'))
                   infoBox.setWindowTitle(self.tr('Layout Loader'))
                   infoBox.exec_()
             except:
-               infoBox = QMessageBox()
-               infoBox.setIcon(QMessageBox.Warning)
-               infoBox.setText(self.tr('Ooops. Something went wrong opening ({}). But I don\'t know what?'.format(layout_count)))
-               infoBox.setWindowTitle(self.tr('Layout Loader'))
-               infoBox.exec_()
+               oopsBox = QMessageBox()
+               oopsBox.setIcon(QMessageBox.Warning)
+               oopsBox.setText(self.tr('Ooops. Something went wrong opening ({}). But I don\'t know what?'.format(layout_name)))
+               oopsBox.setWindowTitle(self.tr('Layout Loader'))
+               oopsBox.setDetailedText('Map Title: {}\nTemplate Name: {}\nLayout Name: {}\nProfile Directory: {}\nTemplate Source: {}\nLayout Count: {}' % (map_title, template_name, layout_name, profile_dir, template_source, layout_count))
+               oopsBox.exec_()
                
             # Clean up
             self.dlg.txtLayoutName.clear()
