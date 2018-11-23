@@ -25,4 +25,4 @@ _(But it really shouldn't)_
 * More templates
 
 ### Known issues
-No currently issues known.
+No issues currently known.
