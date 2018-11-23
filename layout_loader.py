@@ -158,6 +158,7 @@ class LayoutLoader:
     	  more_information += self.tr('If you answer \'Yes\' any current files that you have manually modified, will be overwritten with the new ones from the plugin.\n')
     	  more_information += self.tr('This should be safe if you haven\'t modified any plugin templates and kept the original filename.\n\n')
     	  more_information += self.tr('If you \'Cancel\' No changes to your QGIS profile are made!')
+    	  more_information += self.tr('Some template functions will require QGIS to be restarted before working properly.')
     	  addMoreBox.setDetailedText(more_information)
     	  addMoreBox.setStandardButtons(QMessageBox.Cancel|QMessageBox.No|QMessageBox.Yes)
     	  
