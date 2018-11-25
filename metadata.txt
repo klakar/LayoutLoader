@@ -10,7 +10,7 @@
 name=Layout Loader
 qgisMinimumVersion=3.0
 description=Load and modify layout templates
-version=0.5
+version=0.6
 author=Klas Karlsson
 email=klaskarlsson@hotmail.com
 
