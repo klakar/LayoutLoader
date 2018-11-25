@@ -5,20 +5,23 @@ from qgis.gui import *
 Written by @klaskarlsson
 Licence LGPL
 
-Optional parameters:
+Parameters:
 -g <deg> : Grid North Reference, default 0
 -m <deg> : Magnetic Declination relative True North, default 0
 -t <deg> : True North Reference relative Grid North, default 0
+-s <cm>  : SVG size centimeters, default 2.5
 
 '''
 import math
 
-def generatesvg(g, m, t):
+def generatesvg(g, m, t, s):
+    
+   t = round(t, 1)
 
    svg1="<?xml version=\"1.0\" standalone=\"no\"?>\n"
    svg1+="<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.2//EN\" \n"
    svg1+="  \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n"
-   svg1+="<svg width=\"2.5cm\" height=\"2.5cm\" viewBox=\"0 0 400 400\"\n"
+   svg1+="<svg width=\"" + str(s) + "cm\" height=\"" + str(s) + "cm\" viewBox=\"0 0 400 400\"\n"
    svg1+="     xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n"
 
    svgm="  <path d=\"M 200 380 L %s %s\"\n"
@@ -119,7 +122,7 @@ def generatesvg(g, m, t):
    return generera
 
 @qgsfunction(args='auto', group='Military')
-def north_ref_svg(grid_north, true_north, magnetic_north, feature, parent):
+def north_ref_svg(grid_north, true_north, magnetic_north, size_svg, feature, parent):
     """
     <h1>Generate North Reference SVG.</h1>
     <p>Place inside HTML frame</p>
@@ -127,9 +130,10 @@ def north_ref_svg(grid_north, true_north, magnetic_north, feature, parent):
     <li>arg 1: Grid North (normally 0)</li>
     <li>arg 2: True North (calc)</li>
     <li>arg 3: Magnetic Declination (look up)</li>
+    <li>arg 4: SVG size in centimeters</li>
     </ul>
     <h2>Example usage:</h2>
-    <i>northref(0, 3.4, -7)</i>
+    <i>northref(0, 3.4, -7, 2.5)</i>
     
     """
-    return generatesvg(grid_north, magnetic_north, true_north)
+    return generatesvg(grid_north, magnetic_north, true_north, size_svg)
