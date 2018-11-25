@@ -15,14 +15,14 @@ def getText(nodelist):
 
 
 @qgsfunction(args='auto', group='Military')
-def get_magnetic_declination(lat, long, feature, parent):
+def get_magnetic_declination(long, lat, feature, parent):
     """
     <h1>Get Magnecti Declination</h1>
     <p>This function requires Internet connection</p>
     The function takes two arguments:
     <ul>
-    <li>Latitude (degrees)</li>
     <li>Longitude (degrees)</li>
+    <li>Latitude (degrees)</li>
     </ul>
     <h3>Example:</h3>
     <p>get_magnetic_declination(14.9353, 57.3994)</p><br><br>
