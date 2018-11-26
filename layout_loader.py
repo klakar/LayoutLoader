@@ -58,7 +58,7 @@ class LayoutLoader:
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
-            'LayoutLoader_{}.qm'.format(locale))
+            '{}.qm'.format(locale))
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -86,7 +86,7 @@ class LayoutLoader:
         self.dlg.listWidget.itemClicked.connect(self.suggestLayoutName)
         self.dlg.btnAddMore.clicked.connect(self.addMoreTemplates)
         
-        # Testing context menu
+        # Context menu when right click in layout list
         self.dlg.listWidget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.dlg.listWidget.customContextMenuRequested.connect(self.listMenu)
         
@@ -112,7 +112,7 @@ class LayoutLoader:
     	  	  project_title = project_file_name
     	  self.dlg.txtMapTitle.setText(project_title)
     	  
-    	  # Add all the templates from the list to the listWidget
+    	  # Add all the templates from the list to the listWidget (only add files with *.qpt extension)
     	  for template in templates:
     	  	  filename, extension = os.path.splitext(template) 
     	  	  if extension == '.qpt':
@@ -128,9 +128,9 @@ class LayoutLoader:
     	     # menu.addAction(self.tr('Future context menu option'))
          
     	     menu_choice = menu.exec_(self.dlg.listWidget.viewport().mapToGlobal(position))
-    	  
+
     	     try:
-    	     	  if menu_choice.text() == 'Delete Template File':
+    	     	  if menu_choice.text() == self.tr('Delete Template File'):
     	  	       template_name = self.dlg.listWidget.selectedItems()[0].text()
     	  	       template_path = os.path.join(QgsApplication.qgisSettingsDirPath(),'composer_templates',template_name + '.qpt')
     	  	       if os.path.exists(template_path):
