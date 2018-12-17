@@ -10,7 +10,7 @@
 name=Layout Loader
 qgisMinimumVersion=3.0
 description=Load and modify layout templates
-version=0.6
+version=1.0
 author=Klas Karlsson
 email=klaskarlsson@hotmail.com
 
@@ -32,7 +32,7 @@ homepage=https://github.com/klakar/LayoutLoader/wiki
 category=Plugins
 icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
