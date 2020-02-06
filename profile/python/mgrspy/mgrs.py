@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-
 """
 ***************************************************************************
     mgrs.py
     ---------------------
-    Date                 : August 2016
+    Date                 : August 2016, October 2019
+    Author               : Alex Bruy, Planet Federal
     Copyright            : (C) 2016 Boundless, http://boundlessgeo.com
+                         : (C) 2019 Planet Inc, https://planet.com
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -17,21 +18,54 @@
 """
 from builtins import str
 from builtins import range
-
-__author__ = 'Alexander Bruy'
-__date__ = 'August 2016'
-__copyright__ = '(C) 2016 Boundless, http://boundlessgeo.com'
+__author__ = 'Planet Federal'
+__date__ = 'October 2019'
+__copyright__ = '(C) 2019 Planet Inc, https://planet.com'
 
 # This will get replaced with a git SHA1 when you do a git archive
-
 __revision__ = '$Format:%H$'
 
 
+import os
+import sys
+import re
 import math
 import itertools
+import logging
 
-from osgeo import osr
+HAVE_OSR = False
+# Force using proj for transformations by setting MGRSPY_USE_PROJ env var
+if os.environ.get('MGRSPY_USE_PROJ', None) is None:
+    try:
+        from osgeo import osr
+        HAVE_OSR = True
+    except ImportError:
+        pass
 
+PYPROJ_VER = 0
+if not HAVE_OSR:
+    try:
+        from pyproj import Transformer, CRS, __version__ as pyproj_ver
+        PYPROJ_VER = 2
+        if float(pyproj_ver[:3]) < 2.2:
+            raise Exception('Unsupported pyproj version (need >= 2.2)')
+    except ImportError:
+        from pyproj import Proj, transform, __version__ as pyproj_ver
+        if float(pyproj_ver[:3]) < 1.9 or int(pyproj_ver[4]) < 5:
+            raise Exception('Unsupported pyproj version (need >= 1.9.5)')
+        PYPROJ_VER = 1
+
+LOG_LEVEL = os.environ.get('PYTHON_LOG_LEVEL', 'WARNING').upper()
+FORMAT = "%(levelname)s [%(name)s:%(lineno)s  %(funcName)s()] %(message)s"
+logging.basicConfig(level=LOG_LEVEL, format=FORMAT)
+log = logging.getLogger(__name__)
+
+BADLY_FORMED = \
+    'An MGRS string error: string too long, too short, or badly formed'
+
+# Whether to add the extra half-multiplier to UTM coords per precision,
+# added in geotrans3.8
+GEOTRANS_HALFMULTI = False
 
 ALPHABET = {l: c for c, l in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ')}
 
@@ -48,11 +82,16 @@ MAX_EAST_NORTH = 4000000
 # 3rd letter range - high (UPS),
 # false easting based on 2nd letter,
 # false northing based on 3rd letter
-UPS_CONSTANTS = {0: (ALPHABET['A'], ALPHABET['J'], ALPHABET['Z'], ALPHABET['Z'], 800000.0, 800000.0),
-                 1: (ALPHABET['B'], ALPHABET['A'], ALPHABET['R'], ALPHABET['Z'], 2000000.0, 800000.0),
-                 2: (ALPHABET['Y'], ALPHABET['J'], ALPHABET['Z'], ALPHABET['P'], 800000.0, 1300000.0),
-                 3: (ALPHABET['Z'], ALPHABET['A'], ALPHABET['J'], ALPHABET['P'], 2000000.0, 1300000.0)
-                }
+UPS_CONSTANTS = {
+    0: (ALPHABET['A'], ALPHABET['J'], ALPHABET['Z'], ALPHABET['Z'],
+        800000.0, 800000.0),
+    1: (ALPHABET['B'], ALPHABET['A'], ALPHABET['R'], ALPHABET['Z'],
+        2000000.0, 800000.0),
+    2: (ALPHABET['Y'], ALPHABET['J'], ALPHABET['Z'], ALPHABET['P'],
+        800000.0, 1300000.0),
+    3: (ALPHABET['Z'], ALPHABET['A'], ALPHABET['J'], ALPHABET['P'],
+        2000000.0, 1300000.0)
+}
 
 # letter, minimum northing, upper latitude, lower latitude, northing offset
 LATITUDE_BANDS = [(ALPHABET['C'], 1100000.0, -72.0, -80.5, 0.0),
@@ -81,6 +120,82 @@ class MgrsException(Exception):
     pass
 
 
+def _log_proj_crs(proj_crs, proj_desc='', espg=''):
+    if proj_desc:
+        proj_desc = '{0} '.format(str(proj_desc))
+    if espg:
+        espg = 'espg:{0} '.format(str(espg))
+    definition = ''
+    if HAVE_OSR:
+        definition = proj_crs.ExportToPrettyWkt()
+    if PYPROJ_VER == 1:
+        definition = proj_crs.definition_string()
+    elif PYPROJ_VER == 2:
+        definition = proj_crs.to_wkt(pretty=True)
+    log.debug('{0}proj: {1}{2}{3}'.format(
+        proj_desc, espg, os.linesep, definition))
+
+
+def _transform_proj(x1, y1, epsg_src, epsg_dst, polar=False):
+    if PYPROJ_VER == 1:
+        proj_src = Proj(init='epsg:{0}'.format(epsg_src))
+        _log_proj_crs(proj_src, proj_desc='src', espg=epsg_src)
+        proj_dst = Proj(init='epsg:{0}'.format(epsg_dst))
+        _log_proj_crs(proj_dst, proj_desc='dst', espg=epsg_dst)
+        x2, y2 = transform(proj_src, proj_dst, x1, y1)
+    elif PYPROJ_VER == 2:
+        # With PROJ 6+ input axis ordering needs honored per projection, even
+        #   though always_xy should fix it (doesn't seem to work for UPS)
+        crs_src = CRS.from_epsg(epsg_src)
+        _log_proj_crs(crs_src, proj_desc='src', espg=epsg_src)
+        crs_dst = CRS.from_epsg(epsg_dst)
+        _log_proj_crs(crs_dst, proj_desc='dst', espg=epsg_dst)
+        ct = Transformer.from_crs(crs_src, crs_dst, always_xy=(not polar))
+        if polar:
+            y2, x2 = ct.transform(y1, x1)
+        else:
+            x2, y2 = ct.transform(x1, y1)
+    else:
+        raise MgrsException('pyproj version unsupported')
+
+    return x2, y2
+
+
+def _transform_osr(x1, y1, epsg_src, epsg_dst, polar=False):
+    src = osr.SpatialReference()
+    # Check if we are using osgeo.osr linked against PROJ 6+
+    # If so, input axis ordering needs honored per projection, even though
+    #   OAMS_TRADITIONAL_GIS_ORDER should fix it (doesn't seem to work for UPS)
+    # See GDAL/OGR migration guide for 2.4 to 3.0
+    # https://github.com/OSGeo/gdal/blob/master/gdal/MIGRATION_GUIDE.TXT and
+    # https://trac.osgeo.org/gdal/wiki/rfc73_proj6_wkt2_srsbarn#Axisorderissues
+    osr_proj6 = hasattr(src, 'SetAxisMappingStrategy')
+    if not polar and osr_proj6:
+        src.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    src.ImportFromEPSG(epsg_src)
+    _log_proj_crs(src, proj_desc='src', espg=epsg_src)
+    dst = osr.SpatialReference()
+    if not polar and osr_proj6:
+        dst.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    dst.ImportFromEPSG(epsg_dst)
+    _log_proj_crs(dst, proj_desc='dst', espg=epsg_dst)
+    ct = osr.CoordinateTransformation(src, dst)
+    if polar and osr_proj6:
+        # only supported with osgeo.osr v3.0.0+
+        y2, x2, _ = ct.TransformPoint(y1, x1)
+    else:
+        x2, y2, _ = ct.TransformPoint(x1, y1)
+
+    return x2, y2
+
+
+def _transform(x1, y1, epsg_src, epsg_dst, polar=False):
+    if HAVE_OSR:
+        return _transform_osr(x1, y1, epsg_src, epsg_dst, polar=polar)
+    else:
+        return _transform_proj(x1, y1, epsg_src, epsg_dst, polar=polar)
+
+
 def toMgrs(latitude, longitude, precision=5):
     """ Converts geodetic (latitude and longitude) coordinates to an MGRS
     coordinate string, according to the current ellipsoid parameters.
@@ -90,29 +205,36 @@ def toMgrs(latitude, longitude, precision=5):
     @param precision - precision level of MGRS string
     @returns - MGRS coordinate string
     """
+
+    # To avoid precision issues, which appear when using more than
+    # 9 decimal places
+    # This may no longer be an issue for Python >= 3
+    if sys.version_info.major < 3:
+        latitude = round(latitude, 9)
+        longitude = round(longitude, 9)
+
     if math.fabs(latitude) > 90:
-        raise MgrsException('Latitude outside of valid range (-90 to 90 degrees).')
+        raise MgrsException(
+            'Latitude outside of valid range (-90 to 90 degrees).')
 
     if (longitude < -180) or (longitude > 360):
-        raise MgrsException('Longitude outside of valid range (-180 to 360 degrees).')
+        raise MgrsException(
+            'Longitude outside of valid range (-180 to 360 degrees).')
 
     if (precision < 0) or (precision > MAX_PRECISION):
         raise MgrsException('The precision must be between 0 and 5 inclusive.')
 
     hemisphere, zone, epsg = _epsgForWgs(latitude, longitude)
-    src = osr.SpatialReference()
-    src.ImportFromEPSG(4326)
-    dst = osr.SpatialReference()
-    dst.ImportFromEPSG(epsg)
-    ct = osr.CoordinateTransformation(src, dst)
-    x, y, z = ct.TransformPoint(longitude, latitude)
+
+    x, y = _transform(longitude, latitude, 4326, epsg, polar=(zone == 61))
 
     if (latitude < -80) or (latitude > 84):
         # Convert to UPS
         mgrs = _upsToMgrs(hemisphere, x, y, precision)
     else:
         # Convert to UTM
-        mgrs = _utmToMgrs(zone, hemisphere, latitude, longitude, x, y, precision)
+        mgrs = _utmToMgrs(
+            zone, hemisphere, latitude, longitude, x, y, precision)
 
     return mgrs
 
@@ -124,18 +246,24 @@ def toWgs(mgrs):
     @param mgrs - MGRS coordinate string
     @returns - tuple containning latitude and longitude values
     """
-    if _checkZone(mgrs):
+    mgrs = _clean_mgrs_str(mgrs)
+    log.debug('in: {0}'.format(mgrs))
+
+    utm = _checkZone(mgrs)
+    if utm:
         zone, hemisphere, easting, northing = _mgrsToUtm(mgrs)
     else:
         zone, hemisphere, easting, northing = _mgrsToUps(mgrs)
 
+    log.debug('e: {0}, n: {1}'.format(easting, northing))
+
     epsg = _epsgForUtm(zone, hemisphere)
-    src = osr.SpatialReference()
-    src.ImportFromEPSG(epsg)
-    dst = osr.SpatialReference()
-    dst.ImportFromEPSG(4326)
-    ct = osr.CoordinateTransformation(src, dst)
-    longitude, latitude, z = ct.TransformPoint(easting, northing)
+
+    longitude, latitude = \
+        _transform(easting, northing, epsg, 4326, polar=(not utm))
+
+    # Note y, x axis order for output
+    log.debug('lat: {0}, lon: {1}'.format(latitude, longitude))
 
     return latitude, longitude
 
@@ -154,10 +282,14 @@ def _upsToMgrs(hemisphere, easting, northing, precision):
         raise MgrsException('Invalid hemisphere ("N" or "S").')
 
     if (easting < MIN_EAST_NORTH) or (easting > MAX_EAST_NORTH):
-        raise MgrsException('Easting outside of valid range (100,000 to 900,000 meters for UTM, 0 to 4,000,000 meters for UPS).')
+        raise MgrsException(
+            'Easting outside of valid range (100,000 to 900,000 meters '
+            'for UTM, 0 to 4,000,000 meters for UPS).')
 
     if (northing < MIN_EAST_NORTH) or (northing > MAX_EAST_NORTH):
-        raise MgrsException('Northing outside of valid range (0 to 10,000,000 meters for UTM, 0 to 4,000,000 meters for UPS).')
+        raise MgrsException(
+            'Northing outside of valid range (0 to 10,000,000 meters for UTM, '
+            '0 to 4,000,000 meters for UPS).')
 
     if (precision < 0) or (precision > MAX_PRECISION):
         raise MgrsException('The precision must be between 0 and 5 inclusive.')
@@ -195,7 +327,7 @@ def _upsToMgrs(hemisphere, easting, northing, precision):
         letters[2] = letters[2] + 1
 
     gridEasting = easting
-    gridEasting = gridEasting - falseEasting;
+    gridEasting = gridEasting - falseEasting
     letters[1] = ltr2LowValue + int(gridEasting / ONEHT)
 
     if easting < TWOMIL:
@@ -227,7 +359,7 @@ def _mgrsToUps(mgrs):
     zone, letters, easting, northing, precision = _breakMgrsString(mgrs)
 
     if zone != 0:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
     if letters[0] >= ALPHABET['Y']:
         hemisphere = 'N'
@@ -249,9 +381,19 @@ def _mgrsToUps(mgrs):
 
     # Check that the second letter of the MGRS string is within the range
     # of valid second letter values. Also check that the third letter is valid
-    invalid = [ALPHABET['D'], ALPHABET['E'], ALPHABET['M'], ALPHABET['N'], ALPHABET['V'], ALPHABET['W']]
-    if (letters[1] < ltr2LowValue) or (letters[1] > ltr2HighValue) or (letters[1] in [invalid]) or (letters[2] > ltr3HighValue):
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+    invalid = [
+        ALPHABET['D'],
+        ALPHABET['E'],
+        ALPHABET['M'],
+        ALPHABET['N'],
+        ALPHABET['V'],
+        ALPHABET['W']
+    ]
+    if (letters[1] < ltr2LowValue) \
+            or (letters[1] > ltr2HighValue) \
+            or (letters[1] in [invalid]) \
+            or (letters[2] > ltr3HighValue):
+        raise MgrsException(BADLY_FORMED)
 
     gridNorthing = float(letters[2] * ONEHT + falseNorthing)
     if letters[2] > ALPHABET['I']:
@@ -283,7 +425,8 @@ def _mgrsToUps(mgrs):
     return zone, hemisphere, easting, northing
 
 
-def _utmToMgrs(zone, hemisphere, latitude, longitude, easting, northing, precision):
+def _utmToMgrs(zone, hemisphere, latitude, longitude,
+               easting, northing, precision):
     """ Calculates an MGRS coordinate string based on the UTM zone, latitude,
     easting and northing values.
 
@@ -298,7 +441,9 @@ def _utmToMgrs(zone, hemisphere, latitude, longitude, easting, northing, precisi
     """
     # FIXME: do we really need this?
     # Special check for rounding to (truncated) eastern edge of zone 31V
-    # if (zone == 31) and (((latitude >= 56.0) and (latitude < 64.0)) and ((longitude >= 3.0) or (easting >= 500000.0))):
+    # if (zone == 31) \
+    #         and (((latitude >= 56.0) and (latitude < 64.0))
+    #              and ((longitude >= 3.0) or (easting >= 500000.0))):
     #    # Reconvert to UTM zone 32
     #    override = 32
     #    lat = int(latitude)
@@ -311,11 +456,13 @@ def _utmToMgrs(zone, hemisphere, latitude, longitude, easting, northing, precisi
     #        if (zone - 2 <= override) and (override <= zone + 2):
     #            zone = override
     #        else:
-    #            raise MgrsException('Zone outside of valid range (1 to 60) and within 1 of "natural" zone')
+    #            raise MgrsException('Zone outside of valid range (1 to 60) '
+    #                                'and within 1 of "natural" zone')
     #    elif (zone - 1 <= override) and (override <= zone + 1):
     #        zone = override
     #    else:
-    #        raise MgrsException('Zone outside of valid range (1 to 60) and within 1 of "natural" zone')
+    #        raise MgrsException('Zone outside of valid range (1 to 60) and '
+    #                            'within 1 of "natural" zone')
     #
     #    epsg = _epsgForUtm(zone, hemisphere)
     #
@@ -348,7 +495,8 @@ def _utmToMgrs(zone, hemisphere, latitude, longitude, easting, northing, precisi
     if letters[2] > ALPHABET['N']:
         letters[2] += 1
 
-    if ((letters[0] == ALPHABET['V']) and (zone == 31)) and (easting == 500000.0):
+    if ((letters[0] == ALPHABET['V']) and (zone == 31)) \
+            and (easting == 500000.0):
         easting = easting - 1.0  # Substract 1 meter
 
     letters[1] = ltr2LowValue + int((easting / ONEHT) - 1)
@@ -367,10 +515,10 @@ def _mgrsToUtm(mgrs):
     """
     zone, letters, easting, northing, precision = _breakMgrsString(mgrs)
     if zone == 0:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
     if letters == ALPHABET['X'] and zone in [32, 34, 36]:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
     if letters[0] < ALPHABET['N']:
         hemisphere = 'S'
@@ -381,8 +529,10 @@ def _mgrsToUtm(mgrs):
 
     # Check that the second letter of the MGRS string is within the range
     # of valid second letter values. Also check that the third letter is valid
-    if (letters[1] < ltr2LowValue) or (letters[1] > ltr2HighValue) or (letters[2] > ALPHABET['V']):
-        raise  MgrsException('An MGRS string error: string too long, too short, or badly formed')
+    if (letters[1] < ltr2LowValue) \
+            or (letters[1] > ltr2HighValue) \
+            or (letters[2] > ALPHABET['V']):
+        raise MgrsException(BADLY_FORMED)
 
     rowLetterNorthing = float(letters[2] * ONEHT)
     gridEasting = float((letters[1] - ltr2LowValue + 1) * ONEHT)
@@ -424,7 +574,6 @@ def _mgrsString(zone, letters, easting, northing, precision):
     @param precision - precision level of MGRS string
     @returns - MGRS coordinate string
     """
-    mrgs = ''
     if zone:
         tmp = str(zone)
         mgrs = tmp.zfill(3 - len(tmp))
@@ -432,7 +581,9 @@ def _mgrsString(zone, letters, easting, northing, precision):
         mgrs = '  '
 
     for i in range(3):
-        mgrs += list(ALPHABET.keys())[list(ALPHABET.values()).index(letters[i])]
+        mgrs += list(ALPHABET.keys())[
+            list(ALPHABET.values()).index(letters[i])
+        ]
 
     easting = math.fmod(easting + 1e-8, 100000.0)
     if easting >= 99999.5:
@@ -443,6 +594,8 @@ def _mgrsString(zone, letters, easting, northing, precision):
     if northing >= 99999.5:
         northing = 99999.0
     mgrs += str(int(northing)).rjust(5, '0')[:precision]
+
+    log.debug('mgrs: {0}'.format(mgrs))
 
     return mgrs
 
@@ -455,10 +608,12 @@ def _epsgForWgs(latitude, longitude):
     """
 
     if math.fabs(latitude) > 90:
-        raise MgrsException('Latitude outside of valid range (-90 to 90 degrees).')
+        raise MgrsException(
+            'Latitude outside of valid range (-90 to 90 degrees).')
 
     if longitude < -180 or longitude > 360:
-        return MgrsException('Longitude outside of valid range (-180 to 360 degrees).')
+        return MgrsException(
+            'Longitude outside of valid range (-180 to 360 degrees).')
 
     # hemisphere
     if latitude < 0:
@@ -481,17 +636,17 @@ def _epsgForWgs(latitude, longitude):
             zone = 1
 
         # Handle UTM special cases
-        if latitude >= 56.0 and latitude < 64.0 and longitude >= 3.0 and longitude < 12.0:
+        if 56.0 <= latitude < 64.0 and 3.0 <= longitude < 12.0:
             zone = 32
 
-        if latitude >= 72.0 and latitude < 84.0:
-            if longitude >= 0.0 and longitude < 9.0:
+        if 72.0 <= latitude < 84.0:
+            if 0.0 <= longitude < 9.0:
                 zone = 31
-            elif longitude >= 9.0 and longitude < 21.0:
+            elif 9.0 <= longitude < 21.0:
                 zone = 33
-            elif longitude >= 21.0 and longitude < 33.0:
+            elif 21.0 <= longitude < 33.0:
                 zone = 35
-            elif longitude >= 33.0 and longitude < 42.0:
+            elif 33.0 <= longitude < 42.0:
                 zone = 37
 
     # North or South hemisphere
@@ -542,6 +697,9 @@ def _gridValues(zone):
     if not setNumber:
         setNumber = 6
 
+    ltr2LowValue = None
+    ltr2HighValue = None
+
     if setNumber in [1, 4]:
         ltr2LowValue = ALPHABET['A']
         ltr2HighValue = ALPHABET['H']
@@ -551,6 +709,9 @@ def _gridValues(zone):
     elif setNumber in [3, 6]:
         ltr2LowValue = ALPHABET['S']
         ltr2HighValue = ALPHABET['Z']
+
+    if ltr2LowValue is None or ltr2HighValue is None:
+        raise MgrsException(BADLY_FORMED)
 
     if setNumber % 2:
         patternOffset = 0.0
@@ -566,9 +727,9 @@ def _latitudeLetter(latitude):
     @param latitude - latitude value
     @returns - latitude band letter
     """
-    if latitude >= 72 and latitude < 84.5:
+    if 72 <= latitude < 84.5:
         return ALPHABET['X']
-    elif latitude > -80.5 and latitude < 72:
+    elif -80.5 < latitude < 72:
         idx = int(((latitude + 80.0) / 8.0) + 1.0e-12)
         return LATITUDE_BANDS[idx][0]
 
@@ -577,14 +738,17 @@ def _checkZone(mgrs):
     """ Checks if MGRS coordinate string contains UTM zone definition
 
     @param mgrs - MGRS coordinate string
-    @returns - True if zone is given, False otherwise
+    @returns - True if zone is given, False otherwise (or for UPS)
     """
-    mgrs = mgrs.lstrip()
-    count = sum(1 for c in itertools.takewhile(str.isdigit, mgrs))
+    mgrs = _clean_mgrs_str(mgrs)  # should always set two zone digits, even UPS
+    count = sum(1 for _ in itertools.takewhile(str.isdigit, mgrs))
+    zone = int(mgrs[:count])
+    if zone == 0:
+        return False
     if count <= 2:
         return count > 0
     else:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
 
 def _breakMgrsString(mgrs):
@@ -594,22 +758,20 @@ def _breakMgrsString(mgrs):
     @returns - tuple containing MGRS string componets: UTM zone,
     MGRS coordinate string letters, easting, northing and precision
     """
-    mgrs = mgrs.lstrip()
+    mgrs = _clean_mgrs_str(mgrs)  # should always set two zone digits, even UPS
     # Number of zone digits
-    count = sum(1 for c in itertools.takewhile(str.isdigit, mgrs))
-    if count <= 2:
-        if count > 0:
-            zone = int(mgrs[:2])
-            if zone < 1 or zone > 60:
-                raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
-        else:
-            zone = 0
+    count = sum(1 for _ in itertools.takewhile(str.isdigit, mgrs))
+    if count == 2:
+        zone = int(mgrs[:2])
+        if zone < 0 or zone > 60:
+            raise MgrsException(BADLY_FORMED)
     else:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
     idx = count
     # MGRS letters
-    count = sum(1 for c in itertools.takewhile(str.isalpha, itertools.islice(mgrs, idx, None)))
+    count = sum(1 for _ in itertools.takewhile(
+        str.isalpha, itertools.islice(mgrs, idx, None)))
     if count == 3:
         a = ord('A')
         invalid = [ALPHABET['I'], ALPHABET['O']]
@@ -617,36 +779,52 @@ def _breakMgrsString(mgrs):
         letters = []
         ch = ord(mgrs[idx:idx + 1].upper()) - a
         if ch in invalid:
-            raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+            raise MgrsException(BADLY_FORMED)
         idx += 1
         letters.append(ch)
 
         ch = ord(mgrs[idx:idx + 1].upper()) - a
         if ch in invalid:
-            raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+            raise MgrsException(BADLY_FORMED)
         idx += 1
         letters.append(ch)
 
         ch = ord(mgrs[idx:idx + 1].upper()) - a
         if ch in invalid:
-            raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+            raise MgrsException(BADLY_FORMED)
         idx += 1
         letters.append(ch)
     else:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
     # Easting and Northing
-    count = sum(1 for c in itertools.takewhile(str.isdigit, itertools.islice(mgrs, idx, None)))
+    count = sum(1 for _ in itertools.takewhile(
+        str.isdigit, itertools.islice(mgrs, idx, None)))
     if count <= 10 and count % 2 == 0:
         precision = int(count / 2)
         if precision > 0:
             easting = float(mgrs[idx:idx + precision])
             northing = float(mgrs[idx + precision:])
+
+            multiplier = _computeScale(precision)
+            easting = easting * multiplier
+            northing = northing * multiplier
+
+            if GEOTRANS_HALFMULTI:
+                half_multi = multiplier * 0.5  # added in geotrans3.8
+                easting += half_multi
+                northing += half_multi
         else:
-            easting = 0
-            northing = 0
+            easting = 0.0
+            northing = 0.0
     else:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
+
+    log.debug(
+        'zone: "{0}", letters: "{1}", '
+        'easting: "{2}": northing "{3}", precision: "{4}" '.format(
+            zone, letters, easting, northing, precision)
+    )
 
     return zone, letters, easting, northing, precision
 
@@ -659,16 +837,66 @@ def _latitudeBandMinNorthing(letter):
     @returns - tuple containing minimum northing and northing offset
     for that letter
     """
-    if letter >= ALPHABET['C'] and letter <= ALPHABET['H']:
+    if ALPHABET['C'] <= letter <= ALPHABET['H']:
         minNorthing = LATITUDE_BANDS[letter - 2][1]
         northingOffset = LATITUDE_BANDS[letter - 2][4]
-    elif letter >= ALPHABET['J'] and letter <= ALPHABET['N']:
+    elif ALPHABET['J'] <= letter <= ALPHABET['N']:
         minNorthing = LATITUDE_BANDS[letter - 3][1]
         northingOffset = LATITUDE_BANDS[letter - 3][4]
-    elif letter >= ALPHABET['P'] and letter <= ALPHABET['X']:
+    elif ALPHABET['P'] <= letter <= ALPHABET['X']:
         minNorthing = LATITUDE_BANDS[letter - 4][1]
         northingOffset = LATITUDE_BANDS[letter - 4][4]
     else:
-        raise MgrsException('An MGRS string error: string too long, too short, or badly formed')
+        raise MgrsException(BADLY_FORMED)
 
     return minNorthing, northingOffset
+
+
+def _computeScale(precision):
+    if precision == 0:
+        return 1.0e5
+    elif precision == 1:
+        return 1.0e4
+    elif precision == 2:
+        return 1.0e3
+    elif precision == 3:
+        return 1.0e2
+    elif precision == 4:
+        return 1.0e1
+    elif precision == 5:
+        return 1.0e0
+    return 1.0e5
+
+
+def _clean_mgrs_str(s):
+    """
+    Clean up MGRS user-input string.
+    :param s: MGRS input string
+    :return: Cleaned and stripped string as Unicode
+    """
+    log.debug('in: {0}'.format(s))
+    if str(type(s)) not in ["<class 'str'>",
+                            "<class 'bytes'>",
+                            "<type 'str'>",
+                            "<type 'unicode'>"]:
+        raise MgrsException(BADLY_FORMED)
+
+    # convert to unicode, so str.isdigit, etc work in Py2
+    if str(type(s)) == "<class 'bytes'>":  # Py 3
+        s = s.decode()  # <class 'str'> as UTF-8
+    elif str(type(s)) == "<type 'str'>":  # Py 2
+        s = unicode(s, encoding='UTF-8')  # <type 'unicode'>
+
+    # strip whitespace
+    s = re.sub(r'\s+', '', s)
+
+    # prepend 0 to input of single-digit zone
+    count = sum(1 for _ in itertools.takewhile(str.isdigit, s))
+    if count == 0:
+        s = u'00' + s
+    elif count == 1:
+        s = u'0' + s
+    elif count > 2:
+        raise MgrsException(BADLY_FORMED)
+    log.debug('out: {0}'.format(s))
+    return s

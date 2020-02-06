@@ -26,3 +26,6 @@ _(But it really shouldn't)_
 
 ### Known issues
 No issues currently known.
+
+### Fixed
+* Early Proj6 versions corrupted mgrspy. Updated mgrspy from PlanetFederal.

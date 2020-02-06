@@ -10,7 +10,7 @@
 name=Layout Loader
 qgisMinimumVersion=3.0
 description=Load and modify layout templates
-version=1.0
+version=1.1
 author=Klas Karlsson
 email=klaskarlsson@hotmail.com
 
@@ -23,7 +23,7 @@ repository=https://github.com/klakar/LayoutLoader
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=
+changelog=Updated included mgrspy to fix issues with early proj 6 versions mainly on Windows
 
 # Tags are comma separated with spaces allowed
 tags=Layout,Print Template
