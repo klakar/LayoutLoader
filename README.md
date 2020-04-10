@@ -28,4 +28,4 @@ _(But it really shouldn't)_
 No issues currently known.
 
 ### Fixed
-* Early Proj6 versions corrupted mgrspy. Updated mgrspy from PlanetFederal.
+* Early Proj6 versions corrupted mgrspy. Updated mgrspy from PlanetFederal. You will need to click "Add more..." from the dialog to update the script.
