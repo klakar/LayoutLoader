@@ -42,7 +42,7 @@ def utm_grid(grid_number, feature, parent):
     return km_string
 
 @qgsfunction(args='auto', group='Military') 
-def mgrs(easting, northing, epsg, feature, parent): 
+def mgrs(northing, easting, epsg, feature, parent): 
 	"""
 	<i>Requires mgrspy from Boundless<br>
 	included in Layout Loarder plugin</i><br><br>
@@ -50,8 +50,8 @@ def mgrs(easting, northing, epsg, feature, parent):
 	<br>
 	<h2>Example:</h2><br>
 	<code>
-	mgrs( 495395, 6392411, 32633) -> '33VVD94574973545'<br><br>
-	mgrs( 15.048564, 57.405484, 4326) -> '33VWD1453591543'<br><br>
+	mgrs( 6392411, 495395, 32633) -> '33VVD94574973545'<br><br>
+	mgrs( 57.405484, 15.048564, 4326) -> '33VWD1453591543'<br><br>
 	</code>
 	"""
 	crsSrc = QgsCoordinateReferenceSystem(epsg)
